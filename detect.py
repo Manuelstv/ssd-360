@@ -1,6 +1,7 @@
 from torchvision import transforms
 from utils import *
 from PIL import Image, ImageDraw, ImageFont
+import matplotlib.pyplot as plt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -64,7 +65,7 @@ def detect(original_image, min_score, max_overlap, top_k, suppress=None):
     # Annotate
     annotated_image = original_image
     draw = ImageDraw.Draw(annotated_image)
-    font = ImageFont.truetype("./calibril.ttf", 15)
+    font = ImageFont.load_default()
 
     # Suppress specific classes, if needed
     for i in range(det_boxes.size(0)):
@@ -96,7 +97,9 @@ def detect(original_image, min_score, max_overlap, top_k, suppress=None):
 
 
 if __name__ == '__main__':
-    img_path = '/media/ssd/ssd data/VOC2007/JPEGImages/000001.jpg'
+    img_path = '/home/mstveras/ssd-360/img2.jpg'
     original_image = Image.open(img_path, mode='r')
     original_image = original_image.convert('RGB')
-    detect(original_image, min_score=0.2, max_overlap=0.5, top_k=200).show()
+    img = detect(original_image, min_score=0.2, max_overlap=0.5, top_k=200)
+    img.save('output.png')
+

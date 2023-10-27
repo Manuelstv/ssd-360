@@ -7,7 +7,7 @@ from datasets import PascalVOCDataset
 from utils import *
 
 # Data parameters
-data_folder = './'  # folder with data files
+data_folder = '/home/mstveras/ssd-360'  # folder with data files
 keep_difficult = True  # use objects considered difficult to detect?
 
 # Model parameters
@@ -21,7 +21,7 @@ batch_size = 8  # batch size
 iterations = 120000  # number of iterations to train
 workers = 4  # number of workers for loading data in the DataLoader
 print_freq = 200  # print training status every __ batches
-lr = 1e-3  # learning rate
+lr = 1e-4  # learning rate
 decay_lr_at = [80000, 100000]  # decay learning rate after these many iterations
 decay_lr_to = 0.1  # decay learning rate to this fraction of the existing learning rate
 momentum = 0.9  # momentum

@@ -8,16 +8,18 @@ import torchvision.transforms.functional as FT
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Label map
-voc_labels = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
-              'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor')
+voc_labels = ('airconditioner', 'backpack', 'bathtub', 'bed', 'board', 'book', 'bottle', 'bowl', 'cabinet', 'chair', 'clock', 'computer', 'cup', 'door', 'fan', 'fireplace', 'heater', 'keyboard', 'light', 'microwave', 'mirror', 'mouse', 'oven', 'person', 'phone', 'picture', 'potted plant', 'refrigerator', 'sink', 'sofa', 'table', 'toilet', 'tv', 'vase', 'washer', 'window', 'wine glass')
 label_map = {k: v + 1 for v, k in enumerate(voc_labels)}
 label_map['background'] = 0
 rev_label_map = {v: k for k, v in label_map.items()}  # Inverse mapping
 
 # Color map for bounding boxes of detected objects from https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
-distinct_colors = ['#e6194b', '#3cb44b', '#ffe119', '#0082c8', '#f58231', '#911eb4', '#46f0f0', '#f032e6',
-                   '#d2f53c', '#fabebe', '#008080', '#000080', '#aa6e28', '#fffac8', '#800000', '#aaffc3', '#808000',
-                   '#ffd8b1', '#e6beff', '#808080', '#FFFFFF']
+distinct_colors = ['#5a3f71', '#2f7548', '#b18c4f', '#e57885', '#7d2e84', '#52a557', '#c0946a', '#8e549b',
+'#6dab8d', '#3f5a7e', '#bd7f9d', '#2a785c', '#c7a25a', '#8c4e72', '#5a9f8e', '#d69b83',
+'#41738c', '#b563a3', '#7e8f56', '#d2abbc', '#548a73', '#c88f5e', '#9b7eaf', '#63754e',
+'#e89ca6', '#4f7c99', '#ba8da2', '#7c5f4e', '#a69c75', '#51748e', '#db948b', '#86a59c',
+'#9d7f86', '#725f7c', '#ab8d92', '#64798c', '#cb9a76', '#cb9a76']
+
 label_color_map = {k: distinct_colors[i] for i, k in enumerate(label_map.keys())}
 
 
