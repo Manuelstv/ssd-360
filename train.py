@@ -27,8 +27,8 @@ class Plotting:
     @staticmethod
     def plotEquirectangular(image, kernel, color):
         #resized_image = image
-        #resized_image = cv2.resize(image, (300, 300))
-        resized_image = np.ascontiguousarray(image, dtype=np.uint8)
+        resized_image = cv2.resize(image, (300, 300))
+        #resized_image = np.ascontiguousarray(image, dtype=np.uint8)
 
         kernel = kernel.astype(np.int32)
         hull = cv2.convexHull(kernel)
@@ -38,7 +38,12 @@ class Plotting:
         cv2.polylines(resized_image, [hull], isClosed=True, color = (0,255,0), thickness=2)
         return resized_image
 
-def plot_bfov(image, v00, u00, a_lat, a_long, color, h, w):
+def plot_bfov(image, v00, u00, a_lat, a_long, color, h, w, new_h, new_w):
+    u00 = u00 * (new_w / w)
+    v00 = v00 * (new_h / h)
+
+    h = new_h
+    w = new_w
     phi00 = (u00 - w / 2.) * ((2. * np.pi) / w)
     theta00 = -(v00 - h / 2.) * (np.pi / h)
     r = 100
@@ -118,6 +123,7 @@ def main():
     train_dataset = PascalVOCDataset(data_folder,
                                      split='train',
                                      keep_difficult=keep_difficult)
+    
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                                                collate_fn=train_dataset.collate_fn, num_workers=workers,
                                                pin_memory=True)  # note that we're passing the collate function here
@@ -136,27 +142,25 @@ def main():
     #image = image * torch.tensor(std) + torch.tensor(mean)  # Denormalize
     #image = np.clip(image, 0, 1)  # Clip values to be between 0 and 1
 
-    image = image.numpy()*255
-    #print(image)
-    boxes = boxes[0]
-
-    print(boxes)
     #plt.imshow(image)
     #plt.show()
 
-    #color_map = {4: (0, 0, 255), 5: (0, 255, 0), 6: (255, 0, 0), 12: (255, 255, 0), 17: (0, 255, 255), 25: (255, 0, 255), 26: (128, 128, 0), 27: (0, 128, 128), 30: (128, 0, 128), 34: (128, 128, 128), 35: (64, 0, 0), 36: (0, 64, 0)}
+    image = image.numpy()*255
+    boxes = boxes[0]
+    #print(image)
+
+    #cv2.imwrite('/home/mstveras/image.png', image)
+
+    h, w = image.shape[:2]
     for i in range(len(boxes)):
         box = boxes[i]
         u00, v00, _,_, a_lat1, a_long1 = box
+        print(box)
         a_lat = np.radians(a_long1)
         a_long = np.radians(a_lat1)
-        image = plot_bfov(image, v00, u00, a_lat, a_long, (0,255,0), 960, 1920)
-    
+        image = plot_bfov(image, v00, u00, a_lat, a_long, (0,255,0), h, w, 300,300)
     cv2.imwrite('/home/mstveras/ssd-360/final_image.png', image)
 
-
-
-    # Epochs
     for epoch in range(start_epoch, epochs):
 
         # Decay learning rate at particular epochs

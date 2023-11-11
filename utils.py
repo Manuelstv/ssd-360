@@ -5,6 +5,7 @@ import random
 import xml.etree.ElementTree as ET
 import torchvision.transforms.functional as FT
 from calculate_RoIoU import Sph
+import cv2
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -549,6 +550,28 @@ def resize(image, boxes, dims=(300, 300)):
 
     return new_image, new_boxes
 
+def resize_cv2(image, boxes, dims=(300, 300)):
+    """
+    Resize image. For the SSD300, resize to (300, 300).
+
+    Since percent/fractional coordinates are calculated for the bounding boxes (w.r.t image dimensions) in this process,
+    you may choose to retain them.
+
+    :param image: image, a cv2 Image (numpy array)
+    :param boxes: bounding boxes in boundary coordinates, a tensor of dimensions (n_objects, 4)
+    :return: resized image, updated bounding box coordinates (or fractional coordinates, in which case they remain the same)
+    """
+    # Get old dimensions
+    old_dims = torch.FloatTensor([image.shape[1], image.shape[0]]).unsqueeze(0)
+
+    # Resize image using cv2
+    new_image = cv2.resize(image, dims)
+
+    # Update bounding boxes
+    new_boxes = boxes.clone()
+    new_boxes[:, 0:2] = new_boxes[:, 0:2] / old_dims  # percent coordinates for top-left corner
+
+    return new_image, new_boxes
 
 def photometric_distort(image):
     """
@@ -609,7 +632,7 @@ def transform(image, boxes, labels, difficulties, split):
         #new_image = photometric_distort(new_image)
 
         # Convert PIL image to Torch tensor
-        new_image = FT.to_tensor(new_image)
+        #new_image = FT.to_tensor(new_image)
 
         # Expand image (zoom out) with a 50% chance - helpful for training detection of small objects
         # Fill surrounding space with the mean of ImageNet data that our base VGG was trained on
@@ -621,14 +644,15 @@ def transform(image, boxes, labels, difficulties, split):
         #                                                                 new_difficulties)
 
         # Convert Torch tensor to PIL image
-        new_image = FT.to_pil_image(new_image)
+        #new_image = FT.to_pil_image(new_image)
 
         # Flip image with a 50% chance
         #if random.random() < 0.5:
         #    new_image, new_boxes = flip(new_image, new_boxes)
+        pass
 
     # Resize image to (300, 300) - this also converts absolute boundary coordinates to their fractional form
-    #new_image, new_boxes = resize(new_image, new_boxes, dims=(300, 300))
+    #new_image, new_boxes = resize_cv2(new_image, new_boxes, dims=(300, 300))
 
     # Convert PIL image to Torch tensor
     new_image = FT.to_tensor(new_image)
