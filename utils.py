@@ -4,6 +4,7 @@ import torch
 import random
 import xml.etree.ElementTree as ET
 import torchvision.transforms.functional as FT
+from calculate_RoIoU import Sph
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -526,7 +527,7 @@ def flip(image, boxes):
     return new_image, new_boxes
 
 
-def resize(image, boxes, dims=(300, 300), return_percent_coords=True):
+def resize(image, boxes, dims=(300, 300)):
     """
     Resize image. For the SSD300, resize to (300, 300).
 
@@ -541,12 +542,10 @@ def resize(image, boxes, dims=(300, 300), return_percent_coords=True):
     new_image = FT.resize(image, dims)
 
     # Resize bounding boxes
-    old_dims = torch.FloatTensor([image.width, image.height, image.width, image.height]).unsqueeze(0)
-    new_boxes = boxes / old_dims  # percent coordinates
+    old_dims = torch.FloatTensor([image.width, image.height]).unsqueeze(0)
 
-    if not return_percent_coords:
-        new_dims = torch.FloatTensor([dims[1], dims[0], dims[1], dims[0]]).unsqueeze(0)
-        new_boxes = new_boxes * new_dims
+    new_boxes = boxes
+    new_boxes[:,0:2] = new_boxes[:,0:2] / old_dims  # percent coordinates
 
     return new_image, new_boxes
 
@@ -607,35 +606,35 @@ def transform(image, boxes, labels, difficulties, split):
     # Skip the following operations for evaluation/testing
     if split == 'TRAIN':
         # A series of photometric distortions in random order, each with 50% chance of occurrence, as in Caffe repo
-        new_image = photometric_distort(new_image)
+        #new_image = photometric_distort(new_image)
 
         # Convert PIL image to Torch tensor
         new_image = FT.to_tensor(new_image)
 
         # Expand image (zoom out) with a 50% chance - helpful for training detection of small objects
         # Fill surrounding space with the mean of ImageNet data that our base VGG was trained on
-        if random.random() < 0.5:
-            new_image, new_boxes = expand(new_image, boxes, filler=mean)
+        #if random.random() < 0.5:
+        #    new_image, new_boxes = expand(new_image, boxes, filler=mean)
 
         # Randomly crop image (zoom in)
-        new_image, new_boxes, new_labels, new_difficulties = random_crop(new_image, new_boxes, new_labels,
-                                                                         new_difficulties)
+        #new_image, new_boxes, new_labels, new_difficulties = random_crop(new_image, new_boxes, new_labels,
+        #                                                                 new_difficulties)
 
         # Convert Torch tensor to PIL image
         new_image = FT.to_pil_image(new_image)
 
         # Flip image with a 50% chance
-        if random.random() < 0.5:
-            new_image, new_boxes = flip(new_image, new_boxes)
+        #if random.random() < 0.5:
+        #    new_image, new_boxes = flip(new_image, new_boxes)
 
     # Resize image to (300, 300) - this also converts absolute boundary coordinates to their fractional form
-    new_image, new_boxes = resize(new_image, new_boxes, dims=(300, 300))
+    #new_image, new_boxes = resize(new_image, new_boxes, dims=(300, 300))
 
     # Convert PIL image to Torch tensor
     new_image = FT.to_tensor(new_image)
 
     # Normalize by mean and standard deviation of ImageNet data that our base VGG was trained on
-    new_image = FT.normalize(new_image, mean=mean, std=std)
+    #new_image = FT.normalize(new_image, mean=mean, std=std)
 
     return new_image, new_boxes, new_labels, new_difficulties
 

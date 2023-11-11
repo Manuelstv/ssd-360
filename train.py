@@ -6,6 +6,56 @@ from model import SSD300, MultiBoxLoss
 from datasets import PascalVOCDataset
 from utils import *
 
+import cv2
+import numpy as np
+import json
+from numpy.linalg import norm
+from skimage.io import imread
+
+class Rotation:
+    @staticmethod
+    def Rx(alpha):
+        return np.asarray([[1, 0, 0], [0, np.cos(alpha), -np.sin(alpha)], [0, np.sin(alpha), np.cos(alpha)]])
+    @staticmethod
+    def Ry(beta):
+        return np.asarray([[np.cos(beta), 0, np.sin(beta)], [0, 1, 0], [-np.sin(beta), 0, np.cos(beta)]])
+    @staticmethod
+    def Rz(gamma):
+        return np.asarray([[np.cos(gamma), -np.sin(gamma), 0], [np.sin(gamma), np.cos(gamma), 0], [0, 0, 1]])
+
+class Plotting:
+    @staticmethod
+    def plotEquirectangular(image, kernel, color):
+        #resized_image = image
+        #resized_image = cv2.resize(image, (300, 300))
+        resized_image = np.ascontiguousarray(image, dtype=np.uint8)
+
+        kernel = kernel.astype(np.int32)
+        hull = cv2.convexHull(kernel)
+        if resized_image.dtype != np.uint8:
+            print("Converting resized_image to uint8")
+            resized_image = resized_image.astype(np.uint8)
+        cv2.polylines(resized_image, [hull], isClosed=True, color = (0,255,0), thickness=2)
+        return resized_image
+
+def plot_bfov(image, v00, u00, a_lat, a_long, color, h, w):
+    phi00 = (u00 - w / 2.) * ((2. * np.pi) / w)
+    theta00 = -(v00 - h / 2.) * (np.pi / h)
+    r = 100
+    d_lat = r / (2 * np.tan(a_lat / 2))
+    d_long = r / (2 * np.tan(a_long / 2))
+    p = []
+    for i in range(-(r - 1) // 2, (r + 1) // 2):
+        for j in range(-(r - 1) // 2, (r + 1) // 2):
+            p += [np.asarray([i * d_lat / d_long, j, d_lat])]
+    R = np.dot(Rotation.Ry(phi00), Rotation.Rx(theta00))
+    p = np.asarray([np.dot(R, (p[ij] / norm(p[ij]))) for ij in range(r * r)])
+    phi = np.asarray([np.arctan2(p[ij][0], p[ij][2]) for ij in range(r * r)])
+    theta = np.asarray([np.arcsin(p[ij][1]) for ij in range(r * r)])
+    u = (phi / (2 * np.pi) + 1. / 2.) * w
+    v = h - (-theta / np.pi + 1. / 2.) * h
+    return Plotting.plotEquirectangular(image, np.vstack((u, v)).T, color)
+
 # Data parameters
 data_folder = '/home/mstveras/ssd-360'  # folder with data files
 keep_difficult = True  # use objects considered difficult to detect?
@@ -77,6 +127,34 @@ def main():
     # The paper trains for 120,000 iterations with a batch size of 32, decays after 80,000 and 100,000 iterations
     epochs = iterations // (len(train_dataset) // 32)
     decay_lr_at = [it // (len(train_dataset) // 32) for it in decay_lr_at]
+
+    image, boxes, labels, difficulties = next(iter(train_loader))
+    import matplotlib.pyplot as plt
+    import numpy as np
+    image = image[0]
+    image = image.permute(1, 2, 0)  # Convert from (C, H, W) to (H, W, C)
+    #image = image * torch.tensor(std) + torch.tensor(mean)  # Denormalize
+    #image = np.clip(image, 0, 1)  # Clip values to be between 0 and 1
+
+    image = image.numpy()*255
+    #print(image)
+    boxes = boxes[0]
+
+    print(boxes)
+    #plt.imshow(image)
+    #plt.show()
+
+    #color_map = {4: (0, 0, 255), 5: (0, 255, 0), 6: (255, 0, 0), 12: (255, 255, 0), 17: (0, 255, 255), 25: (255, 0, 255), 26: (128, 128, 0), 27: (0, 128, 128), 30: (128, 0, 128), 34: (128, 128, 128), 35: (64, 0, 0), 36: (0, 64, 0)}
+    for i in range(len(boxes)):
+        box = boxes[i]
+        u00, v00, _,_, a_lat1, a_long1 = box
+        a_lat = np.radians(a_long1)
+        a_long = np.radians(a_lat1)
+        image = plot_bfov(image, v00, u00, a_lat, a_long, (0,255,0), 960, 1920)
+    
+    cv2.imwrite('/home/mstveras/ssd-360/final_image.png', image)
+
+
 
     # Epochs
     for epoch in range(start_epoch, epochs):

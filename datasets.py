@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 from PIL import Image
 import xml.etree.ElementTree as ET
 from utils import transform
+import cv2
 
 class PascalVOCDataset(Dataset):
 
@@ -13,11 +14,8 @@ class PascalVOCDataset(Dataset):
         self.data_folder = data_folder
         self.keep_difficult = keep_difficult
         self.split_dir = os.path.join(data_folder, self.split.lower())
-        #self.image_dir = os.path.join(self.split_dir, 'images')
-        self.image_dir = '/home/mstveras/ssd-360/train2/images'
-        #self.annotation_dir = os.path.join(self.split_dir)
-        self.annotation_dir = '/home/mstveras/ssd-360/train2/labels'
-        print(self.annotation_dir)
+        self.image_dir = '/home/mstveras/ssd-360/dataset/train/images'
+        self.annotation_dir = '/home/mstveras/ssd-360/dataset/train/labels'
         self.image_filenames = [os.path.join(self.image_dir, f) for f in sorted(os.listdir(self.image_dir)) if f.endswith('.jpg')]
         self.annotation_filenames = [os.path.join(self.annotation_dir, f) for f in sorted(os.listdir(self.annotation_dir)) if f.endswith('.xml')]
         assert len(self.image_filenames) == len(self.annotation_filenames)
@@ -25,7 +23,8 @@ class PascalVOCDataset(Dataset):
     def __getitem__(self, i):
         image_filename = self.image_filenames[i]
         annotation_filename = self.annotation_filenames[i]
-        image = Image.open(image_filename, mode='r').convert('RGB')
+        #image = Image.open(image_filename, mode='r').convert('RGB')
+        image = cv2.imread(image_filename)
 
         tree = ET.parse(annotation_filename)
         root = tree.getroot()
@@ -40,11 +39,13 @@ class PascalVOCDataset(Dataset):
             if not self.keep_difficult and difficult:
                 continue
             bbox = obj.find('bndbox')
-            xmin = int(bbox.find('xmin').text)
-            ymin = int(bbox.find('ymin').text)
-            xmax = int(bbox.find('xmax').text)
-            ymax = int(bbox.find('ymax').text)
-            boxes.append([xmin, ymin, xmax, ymax])
+            x_center = int(bbox.find('x_center').text)
+            y_center = int(bbox.find('y_center').text)
+            phi = float(bbox.find('phi').text)
+            theta = float(bbox.find('theta').text)
+            width = float(bbox.find('width').text)
+            height = float(bbox.find('height').text)
+            boxes.append([x_center, y_center, phi, theta, width, height])
             labels.append(label_mapping[obj.find('name').text])
             difficulties.append(difficult)
 

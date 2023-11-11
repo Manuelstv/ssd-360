@@ -43,11 +43,12 @@ def plot_bfov(image, v00, u00, a_lat, a_long, color, h, w):
     return Plotting.plotEquirectangular(image, np.vstack((u, v)).T, color)
 
 if __name__ == "__main__":
-    image = imread('/home/mstveras/360-obj-det/images/image_00307.jpg')
+    image = imread('/home/mstveras/ssd-360/dataset/train/images/7fBj3.jpg')
     h, w = image.shape[:2]
-    with open('/home/mstveras/360-obj-det/annotations/image_00307.json', 'r') as f:
+    with open('/home/mstveras/ssd-360/annotations/7fBj3.json', 'r') as f:
         data = json.load(f)
     boxes = data['boxes']
+    print(boxes)
     classes = data['class']
     color_map = {4: (0, 0, 255), 5: (0, 255, 0), 6: (255, 0, 0), 12: (255, 255, 0), 17: (0, 255, 255), 25: (255, 0, 255), 26: (128, 128, 0), 27: (0, 128, 128), 30: (128, 0, 128), 34: (128, 128, 128), 35: (64, 0, 0), 36: (0, 64, 0)}
     for i in range(len(boxes)):
@@ -56,5 +57,5 @@ if __name__ == "__main__":
         a_lat = np.radians(a_long1)
         a_long = np.radians(a_lat1)
         color = color_map.get(classes[i], (255, 255, 255))
-        image = plot_bfov(image, v00, u00, a_lat, a_long, color, h, w)
-    cv2.imwrite('/home/mstveras/360-obj-det/final_image.png', image)
+        image = plot_bfov(image, v00, u00, a_lat, a_long,(0,255,0), h, w)
+    cv2.imwrite('/home/mstveras/ssd-360/final_image.png', image)
