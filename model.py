@@ -4,8 +4,59 @@ import torch.nn.functional as F
 from math import sqrt
 from itertools import product as product
 import torchvision
+from calculate_RoIoU import Sph
+from libs.tools import ro_Shpbbox
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def transFormat(gt):
+    '''
+    Change the format and range of the RBFoV Representations.
+    Input:
+    - gt: the last dimension: [center_x, center_y, fov_x, fov_y, angle]
+          center_x : [-180, 180]
+          center_y : [90, -90]
+          fov_x    : [0, 180]
+          fov_y    : [0, 180]
+          angle    : [90, -90]
+          All parameters are angles.
+    Output:
+    - ann: the last dimension: [center_x', center_y', fov_x', fov_y', angle]
+           center_x' : [0, 2 * pi]
+           center_y' : [0, pi]
+           fov_x'    : [0, pi]
+           fov_y'    : [0, pi]
+           angle     : [90, -90]
+           All parameters are radians.
+    '''
+    import copy
+    ann = copy.copy(gt)
+    ann[..., 2] = ann[..., 2] / 180 * np.pi
+    ann[..., 3] = ann[..., 3] / 180 * np.pi
+    ann[..., 0] = ann[..., 0]*2*np.pi
+    ann[..., 1] = ann[..., 1]*np.pi
+    return ann
+
+def drawSphBBox(ann, b):
+    '''Draw RBFoVs'''
+    from libs.ImageRecorder import ImageRecorder
+    import cv2
+    
+    img = np.zeros((960, 1920, 3))
+    erp_w, erp_h = 1920, 960
+    BFoV = ImageRecorder(erp_w, erp_h, view_angle_w=ann[2], view_angle_h=ann[3], long_side=erp_w)
+    Px, Py = BFoV._sample_points(ann[0] / 180 * np.pi, ann[1] / 180 * np.pi, border_only=True)
+    Px, Py = ro_Shpbbox(ann, Px, Py, erp_w=erp_w, erp_h=erp_h)
+    BFoV.draw_Sphbbox(img, Px, Py, border_only=True)
+    
+    BFoV = ImageRecorder(erp_w, erp_h, view_angle_w=b[2], view_angle_h=b[3], long_side=erp_w)
+    Px, Py = BFoV._sample_points(b[0] / 180 * np.pi, b[1] / 180 * np.pi, border_only=True)
+    Px, Py = ro_Shpbbox(b, Px, Py, erp_w=erp_w, erp_h=erp_h)
+    BFoV.draw_Sphbbox(img, Px, Py, border_only=True, color=(0, 255, 0))
+
+    cv2.imshow('output', img)
+    cv2.waitKey()
 
 
 class VGGBase(nn.Module):
@@ -529,6 +580,7 @@ class SSD300(nn.Module):
         return all_images_boxes, all_images_labels, all_images_scores  # lists of length batch_size
 
 
+
 class MultiBoxLoss(nn.Module):
     """
     The MultiBox loss, a loss function for object detection.
@@ -572,8 +624,13 @@ class MultiBoxLoss(nn.Module):
         for i in range(batch_size):
             n_objects = boxes[i].size(0)
 
-            overlap = find_jaccard_overlap(boxes[i],
-                                           self.priors_xy)  # (n_objects, 8732)
+            print(boxes[i].shape)
+            print( self.priors_xy.shape)
+
+            overlap = Sph().sphIoU(boxes[i], self.priors_xy)
+
+            #overlap = find_jaccard_overlap(boxes[i],
+            #                               self.priors_xy)  # (n_objects, 8732)
 
             # For each prior, find the object that has the maximum overlap
             overlap_for_each_prior, object_for_each_prior = overlap.max(dim=0)  # (8732)

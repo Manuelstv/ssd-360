@@ -5,12 +5,89 @@ import torch.utils.data
 from model import SSD300, MultiBoxLoss
 from datasets import PascalVOCDataset
 from utils import *
+from calculate_RoIoU import Sph
+from libs.tools import ro_Shpbbox
 
 import cv2
 import numpy as np
 import json
 from numpy.linalg import norm
 from skimage.io import imread
+
+def transFormat_new(gt):
+    '''
+    Change the format and range of the RBFoV Representations.
+    Input:
+    - gt: the last dimension: [center_x, center_y, fov_x, fov_y, angle]
+          center_x : [0, 300] (previously [-180, 180])
+          center_y : [0, 300] (previously [90, -90])
+          fov_x    : [0, 180]
+          fov_y    : [0, 180]
+          angle    : [90, -90]
+          All parameters are angles.
+    Output:
+    - ann: the last dimension: [center_x', center_y', fov_x', fov_y', angle]
+           center_x' : [0, 2 * pi]
+           center_y' : [0, pi]
+           fov_x'    : [0, pi]
+           fov_y'    : [0, pi]
+           angle     : [90, -90]
+           All parameters are radians.
+    '''
+    import copy
+    ann = copy.copy(gt)
+
+    # Adjusting center_x and center_y ranges from [0, 300] to [-180, 180] and [90, -90] respectively
+    ann[..., 0] = (ann[..., 0] - 150) / 150 * 180  # center_x now in [-180, 180]
+    ann[..., 1] = 90 - (ann[..., 1] / 300 * 180)  # center_y now in [90, -90]
+
+    # Converting angles to radians
+    ann[..., 2] = ann[..., 2] / 180 * np.pi  # fov_x
+    ann[..., 3] = ann[..., 3] / 180 * np.pi  # fov_y
+    ann[..., 0] = ann[..., 0] / 180 * np.pi + np.pi  # center_x
+    ann[..., 1] = np.pi / 2 - ann[..., 1] / 180 * np.pi  # center_y
+
+    # Add a new column for angle as it remains in angles
+    #new_column = np.zeros((ann.shape[0], 1))
+
+    # Concatenate the new column with the existing array
+    #ann = np.concatenate((ann, new_column), axis=1)
+
+    return ann
+
+def transFormat(gt):
+    '''
+    Change the format and range of the RBFoV Representations.
+    Input:
+    - gt: the last dimension: [center_x, center_y, fov_x, fov_y, angle]
+          center_x : [-180, 180]
+          center_y : [90, -90]
+          fov_x    : [0, 180]
+          fov_y    : [0, 180]
+          angle    : [90, -90]
+          All parameters are angles.
+    Output:
+    - ann: the last dimension: [center_x', center_y', fov_x', fov_y', angle]
+           center_x' : [0, 2 * pi]
+           center_y' : [0, pi]
+           fov_x'    : [0, pi]
+           fov_y'    : [0, pi]
+           angle     : [90, -90]
+           All parameters are radians.
+    '''
+    import copy
+    ann = copy.copy(gt)
+    ann[..., 2] = ann[..., 2] / 180 * np.pi
+    ann[..., 3] = ann[..., 3] / 180 * np.pi
+    ann[..., 0] = ann[..., 0] / 180 * np.pi+ np.pi
+    ann[..., 1] = np.pi / 2 - ann[..., 1] / 180 * np.pi
+
+    new_column = np.zeros((ann.shape[0], 1))
+
+    # Concatenate the new column with the existing array
+    ann = np.concatenate((ann, new_column), axis=1)
+
+    return ann
 
 class Rotation:
     @staticmethod
@@ -27,8 +104,8 @@ class Plotting:
     @staticmethod
     def plotEquirectangular(image, kernel, color):
         #resized_image = image
-        resized_image = cv2.resize(image, (300, 300))
-        #resized_image = np.ascontiguousarray(image, dtype=np.uint8)
+        #$resized_image = cv2.resize(image, (299, 299))
+        resized_image = np.ascontiguousarray(image, dtype=np.uint8)
 
         kernel = kernel.astype(np.int32)
         hull = cv2.convexHull(kernel)
@@ -38,12 +115,7 @@ class Plotting:
         cv2.polylines(resized_image, [hull], isClosed=True, color = (0,255,0), thickness=2)
         return resized_image
 
-def plot_bfov(image, v00, u00, a_lat, a_long, color, h, w, new_h, new_w):
-    u00 = u00 * (new_w / w)
-    v00 = v00 * (new_h / h)
-
-    h = new_h
-    w = new_w
+def plot_bfov(image, v00, u00, a_lat, a_long, color, h, w):
     phi00 = (u00 - w / 2.) * ((2. * np.pi) / w)
     theta00 = -(v00 - h / 2.) * (np.pi / h)
     r = 100
@@ -151,16 +223,20 @@ def main():
 
     #cv2.imwrite('/home/mstveras/image.png', image)
 
-    h, w = image.shape[:2]
+    h, w = 300,300
+
     for i in range(len(boxes)):
         box = boxes[i]
-        u00, v00, _,_, a_lat1, a_long1 = box
-        print(box)
+        u00, v00, a_lat1, a_long1 = box
+        #print(box)
         a_lat = np.radians(a_long1)
         a_long = np.radians(a_lat1)
-        image = plot_bfov(image, v00, u00, a_lat, a_long, (0,255,0), h, w, 300,300)
+        image = plot_bfov(image, v00, u00, a_lat, a_long, (0,255,0), h, w)
     cv2.imwrite('/home/mstveras/ssd-360/final_image.png', image)
 
+    _gt = transFormat_new(boxes)
+    print(_gt)
+    
     for epoch in range(start_epoch, epochs):
 
         # Decay learning rate at particular epochs

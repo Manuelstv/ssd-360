@@ -24,12 +24,7 @@ class Plotting:
         cv2.polylines(resized_image, [hull], isClosed=True, color=color, thickness=2)
         return resized_image
 
-def plot_bfov(image, v00, u00, a_lat, a_long, color, h, w, new_h, new_w):
-    u00 = u00 * (new_w / w)
-    v00 = v00 * (new_h / h)
-
-    h = new_h
-    w = new_w
+def plot_bfov(image, v00, u00, a_lat, a_long, color, h, w):
     phi00 = (u00 - w / 2.) * ((2. * np.pi) / w)
     theta00 = -(v00 - h / 2.) * (np.pi / h)
     r = 100

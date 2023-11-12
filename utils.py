@@ -604,7 +604,7 @@ def photometric_distort(image):
     return new_image
 
 
-def transform(image, boxes, labels, difficulties, split):
+def transform(image, boxes, labels, difficulties, split, new_h, new_w):
     """
     Apply the transformations above.
 
@@ -623,10 +623,14 @@ def transform(image, boxes, labels, difficulties, split):
     std = [0.229, 0.224, 0.225]
 
     new_image = image
+    h, w = image.shape[:2]
     new_boxes = boxes
     new_labels = labels
     new_difficulties = difficulties
     # Skip the following operations for evaluation/testing
+
+    new_image  = cv2.resize(image, (new_h, new_w))
+
     if split == 'TRAIN':
         # A series of photometric distortions in random order, each with 50% chance of occurrence, as in Caffe repo
         #new_image = photometric_distort(new_image)
@@ -649,10 +653,13 @@ def transform(image, boxes, labels, difficulties, split):
         # Flip image with a 50% chance
         #if random.random() < 0.5:
         #    new_image, new_boxes = flip(new_image, new_boxes)
-        pass
+
+        new_boxes[:,0] = boxes[:,0] * (new_w / w)
+        new_boxes[:,1] = boxes[:,1] * (new_h / h)
 
     # Resize image to (300, 300) - this also converts absolute boundary coordinates to their fractional form
     #new_image, new_boxes = resize_cv2(new_image, new_boxes, dims=(300, 300))
+
 
     # Convert PIL image to Torch tensor
     new_image = FT.to_tensor(new_image)

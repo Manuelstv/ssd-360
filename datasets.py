@@ -25,6 +25,7 @@ class PascalVOCDataset(Dataset):
         annotation_filename = self.annotation_filenames[i]
         #image = Image.open(image_filename, mode='r').convert('RGB')
         image = cv2.imread(image_filename)
+        #image  = cv2.resize(image, (300,300))
 
         tree = ET.parse(annotation_filename)
         root = tree.getroot()
@@ -41,11 +42,11 @@ class PascalVOCDataset(Dataset):
             bbox = obj.find('bndbox')
             x_center = int(bbox.find('x_center').text)
             y_center = int(bbox.find('y_center').text)
-            phi = float(bbox.find('phi').text)
-            theta = float(bbox.find('theta').text)
+            #phi = float(bbox.find('phi').text)
+            #theta = float(bbox.find('theta').text)
             width = int(float(bbox.find('width').text))#*(300/1920))
             height = int(float(bbox.find('height').text))#*(300/960))
-            boxes.append([x_center, y_center, phi, theta, width, height])
+            boxes.append([x_center, y_center, width, height])
             labels.append(label_mapping[obj.find('name').text])
             difficulties.append(difficult)
 
@@ -53,7 +54,7 @@ class PascalVOCDataset(Dataset):
         labels = torch.LongTensor(labels)
         difficulties = torch.ByteTensor(difficulties)
 
-        image, boxes, labels, difficulties = transform(image, boxes, labels, difficulties, split=self.split)
+        image, boxes, labels, difficulties = transform(image, boxes, labels, difficulties, split=self.split, new_h = 300, new_w = 300)
 
         return image, boxes, labels, difficulties
 
