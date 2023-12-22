@@ -34,7 +34,7 @@ def detect(original_image, min_score, max_overlap, top_k, suppress=None):
     """
 
     # Transform
-    image = normalize(to_tensor(resize(original_image)))
+    image = to_tensor(resize(original_image))
 
     # Move to default device
     image = image.to(device)
@@ -100,6 +100,6 @@ if __name__ == '__main__':
     img_path = '/home/mstveras/ssd-360/img2.jpg'
     original_image = Image.open(img_path, mode='r')
     original_image = original_image.convert('RGB')
-    img = detect(original_image, min_score=0.2, max_overlap=0.5, top_k=200)
+    img = detect(original_image, min_score=0.1, max_overlap=0.5, top_k=200)
     img.save('output.png')
 
